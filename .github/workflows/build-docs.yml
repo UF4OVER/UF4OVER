@@ -1,0 +1,42 @@
+name: Build DOCX and PDF from Markdown
+
+on:
+  push:
+    branches:
+      - doc
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pandoc and XeLaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex texlive-lang-chinese texlive-fonts-recommended fonts-noto-cjk
+
+      - name: Generate DOCX
+        run: |
+          pandoc docs/paper.md -o docs/paper.docx --standalone
+
+      - name: Generate PDF
+        run: |
+          pandoc docs/paper.md -o docs/paper.pdf --standalone --pdf-engine=xelatex -V CJKmainfont="Noto Serif CJK SC" -V mainfont="Noto Serif CJK SC" -V geometry:margin=2.54cm -V linestretch=1.5
+
+      - name: Commit files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git status --porcelain | grep -qE 'docs/paper\.(pdf|docx)'; then
+            git add docs/paper.docx docs/paper.pdf
+            git commit -m "build(docs): generate paper.docx and paper.pdf"
+            git push
+          else
+            echo "No changes to commit"
+          fi
